@@ -15,9 +15,13 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://ivf_scout:ivf_scout@localhost:5433/ivf_scout"
     openai_api_key: str | None = None
-    openai_model: str = "gpt-5.5"
+    openai_model: str = "gpt-5.6-luna"
     scan_lookback_days: int = Field(default=7, ge=1, le=90)
-    openai_max_tool_calls: int = Field(default=3, ge=1, le=10)
+    discovery_max_candidates: int = Field(default=20, ge=1, le=100)
+    classifier_batch_size: int = Field(default=5, ge=1, le=10)
+    article_max_characters: int = Field(default=12_000, ge=1_000, le=50_000)
+    openai_input_cost_per_million: float = Field(default=0.20, ge=0)
+    openai_output_cost_per_million: float = Field(default=1.20, ge=0)
     log_level: str = "INFO"
 
 

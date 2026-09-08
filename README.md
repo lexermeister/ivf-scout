@@ -1,6 +1,7 @@
 # IVF Scout
 
-Minimal V1 for scanning configured IVF-industry sources and storing relevant news.
+Minimal V1 for deterministically discovering configured IVF-industry announcements and storing
+only relevant news.
 
 ## Local setup
 
@@ -46,7 +47,27 @@ Scan one source with a 14-day lookback, including if that source was already sca
 ## V1 scope
 
 - Sources are stored in PostgreSQL and can be enabled or disabled.
-- Each source is searched only within its configured domain.
-- OpenAI web search returns structured relevant-news results.
+- Each source has a configured news index and allowed article URL patterns.
+- HTML and PDF links are discovered and fetched directly without OpenAI web search.
+- Every discovered URL is recorded in `source_entries`; known URLs are not classified again.
+- Newly discovered undated articles remain eligible and keep `published_at` empty.
+- New article content is classified in small batches with structured OpenAI output.
 - Relevant results are stored in `news_items`.
-- An exact URL is stored only once; there is no semantic or cross-source deduplication.
+- Token usage and estimated model cost are stored in `scan_runs` and printed by the CLI.
+- An exact URL is stored only once; there is no semantic deduplication.
+
+On a quiet day, when all links are already known, the scan makes no OpenAI request.
+
+## Scanner configuration
+
+The inexpensive content classifier defaults to `gpt-5.6-luna`. Pricing inputs are configurable so
+the CLI estimate can be kept aligned with the selected model:
+
+```dotenv
+OPENAI_MODEL=gpt-5.6-luna
+DISCOVERY_MAX_CANDIDATES=20
+CLASSIFIER_BATCH_SIZE=5
+ARTICLE_MAX_CHARACTERS=12000
+OPENAI_INPUT_COST_PER_MILLION=0.20
+OPENAI_OUTPUT_COST_PER_MILLION=1.20
+```

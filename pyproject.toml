@@ -10,10 +10,13 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.14,<2",
+    "beautifulsoup4>=4.13,<5",
+    "httpx>=0.28,<1",
     "openai>=2,<3",
     "psycopg[binary]>=3.2,<4",
     "pydantic>=2.10,<3",
     "pydantic-settings>=2.7,<3",
+    "pypdf>=5,<7",
     "sqlalchemy>=2.0,<3",
     "typer>=0.15,<1",
 ]

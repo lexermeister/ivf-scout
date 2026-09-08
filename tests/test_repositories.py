@@ -27,9 +27,21 @@ def test_memphasys_uses_asx_announcements_page(session):
 
     assert source is not None
     assert source.domain == "memphasys.com"
-    assert source.website_url == (
+    assert source.news_url == (
         "https://www.memphasys.com/investor-relations/asx-announcements/"
     )
+
+
+def test_minitube_human_art_uses_news_page(session):
+    repository = SourceRepository(session)
+    for seed in INITIAL_SOURCES:
+        repository.upsert_seed(seed)
+
+    source = repository.get_enabled_by_slug("minitube-human-art")
+
+    assert source is not None
+    assert source.domain == "minitube-humanart.com"
+    assert source.news_url == "https://www.minitube-humanart.com/en/news/"
 
 
 def test_exact_url_is_saved_only_once(session):

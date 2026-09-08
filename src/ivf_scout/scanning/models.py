@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
 
@@ -39,3 +40,50 @@ class SourceScanResult(BaseModel):
 class ScannedSourceResult(BaseModel):
     result: SourceScanResult
     response_id: str | None = None
+
+
+@dataclass(frozen=True)
+class DiscoveredEntry:
+    url: str
+    title: str | None = None
+    published_at: date | None = None
+
+
+@dataclass(frozen=True)
+class ArticleDocument:
+    entry_id: str
+    url: str
+    title: str | None
+    published_at: date | None
+    content: str
+    content_type: str
+    content_hash: str
+
+
+class ClassifiedEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entry_id: str
+    relevant: bool
+    title: str | None
+    published_at: date | None
+    category: NewsCategory | None
+    manufacturer_name: str | None
+    product_name: str | None
+    summary: str | None
+    why_relevant: str | None
+    europe_relevance: str | None
+
+
+class ClassificationBatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[ClassifiedEntry]
+
+
+@dataclass(frozen=True)
+class ClassificationResult:
+    items: list[ClassifiedEntry]
+    response_id: str | None
+    input_tokens: int
+    output_tokens: int

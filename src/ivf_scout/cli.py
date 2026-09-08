@@ -10,7 +10,9 @@ from alembic import command
 from ivf_scout.config import get_settings
 from ivf_scout.db.repositories import NewsRepository, SourceRepository
 from ivf_scout.db.session import create_database_engine, create_session_factory, session_scope
-from ivf_scout.scanning.openai_scanner import OpenAISourceScanner
+from ivf_scout.scanning.classifier import OpenAIContentClassifier
+from ivf_scout.scanning.discovery import SourceDiscoverer
+from ivf_scout.scanning.documents import ArticleFetcher
 from ivf_scout.scanning.service import ScanService
 from ivf_scout.seeds import INITIAL_SOURCES
 
@@ -92,17 +94,37 @@ def scan(
         raise typer.BadParameter(
             "OPENAI_API_KEY is required. Copy .env.example to .env and add your key."
         )
-    scanner = OpenAISourceScanner(settings)
+    discoverer = SourceDiscoverer(settings.discovery_max_candidates)
+    fetcher = ArticleFetcher(settings.article_max_characters)
+    classifier = OpenAIContentClassifier(settings)
     with session_scope(_session_factory()) as session:
-        service = ScanService(session, scanner, days or settings.scan_lookback_days)
+        service = ScanService(
+            session,
+            discoverer,
+            fetcher,
+            classifier,
+            days or settings.scan_lookback_days,
+            settings.classifier_batch_size,
+            settings.openai_input_cost_per_million,
+            settings.openai_output_cost_per_million,
+        )
         summary = service.run(source_slug=source)
 
     for outcome in summary.outcomes:
         window = f"{outcome.start_date} to {outcome.end_date}"
         if outcome.status == "SUCCEEDED":
             typer.echo(
-                f"{outcome.source}: scanned {window}; {outcome.saved} relevant items saved"
+                f"{outcome.source}: scanned {window}; {outcome.discovered} discovered, "
+                f"{outcome.new} new, {outcome.skipped} skipped, "
+                f"{outcome.classified} classified, {outcome.saved} relevant saved"
             )
+            typer.echo(
+                f"  OpenAI usage: {outcome.input_tokens} input + "
+                f"{outcome.output_tokens} output tokens; "
+                f"estimated cost ${outcome.estimated_cost_usd:.6f}"
+            )
+            if outcome.entry_failures:
+                typer.echo(f"  Entry failures: {outcome.entry_failures}", err=True)
         else:
             typer.echo(f"{outcome.source}: scanned {window}; failed — {outcome.error}", err=True)
     typer.echo(
