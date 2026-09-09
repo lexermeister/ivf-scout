@@ -52,6 +52,9 @@ Scan one source with a 14-day lookback, including if that source was already sca
 - Every discovered URL is recorded in `source_entries`; known URLs are not classified again.
 - Newly discovered undated articles remain eligible and keep `published_at` empty.
 - New article content is classified in small batches with structured OpenAI output.
+- Only named new-product introductions, launches, launch-enabling approvals, and substantive
+  product unveilings are retained; regulatory-only and general industry stories are excluded.
+- Reports show the product name and a concise product description for every retained item.
 - Relevant results are stored in `news_items`.
 - Token usage and estimated model cost are stored in `scan_runs` and printed by the CLI.
 - An exact URL is stored only once; there is no semantic deduplication.

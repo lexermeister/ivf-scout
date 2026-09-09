@@ -25,6 +25,15 @@ DATE_PATTERNS = (
     ),
     (
         re.compile(
+            r"\b((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
+            r"Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|"
+            r"Dec(?:ember)?)\s+\d{1,2}\s+\d{4})\b",
+            re.IGNORECASE,
+        ),
+        ("%B %d %Y", "%b %d %Y"),
+    ),
+    (
+        re.compile(
             r"\b(\d{1,2}\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|"
             r"Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|"
             r"Nov(?:ember)?|Dec(?:ember)?)\s+\d{4})\b",
@@ -60,40 +69,71 @@ class SourceDiscoverer:
         news_path = urlsplit(news_url).path.rstrip("/") if news_url else ""
 
         for anchor in soup.select("a[href]"):
+            if is_navigation_anchor(anchor):
+                continue
             url = canonicalize_url(anchor.get("href", ""), source.news_url)
             if not url or url == news_url or url in seen:
                 continue
-            if urlsplit(url).path.rstrip("/") == news_path:
-                continue
+            url_parts = urlsplit(url)
+            if url_parts.path.rstrip("/") == news_path:
+                query_keys = {key.lower() for key, _ in parse_qsl(url_parts.query)}
+                if not query_keys or query_keys <= {"page", "p", "paged"}:
+                    continue
             if not belongs_to_domain(url, source.domain):
                 continue
             if not any(pattern.lower() in url.lower() for pattern in source.article_url_patterns):
                 continue
 
-            context_parts = [anchor.get_text(" ", strip=True)]
-            parent_text = (anchor.parent or anchor).get_text(" ", strip=True)
-            if len(parent_text) <= 1_000:
-                context_parts.append(parent_text)
-            previous_text = [
-                str(value).strip()
-                for value in anchor.find_all_previous(string=True, limit=5)
-                if str(value).strip()
-            ]
-            context_parts.extend(previous_text)
-            context = " ".join(context_parts)
             year_match = re.search(r"/(?:uploads/)?((?:19|20)\d{2})/", url)
             default_year = int(year_match.group(1)) if year_match else None
+            card = nearest_dated_container(anchor, default_year=default_year)
+            if card is not None:
+                context = card.get_text(" ", strip=True)
+            else:
+                previous_text = [
+                    str(value).strip()
+                    for value in anchor.find_all_previous(string=True, limit=30)
+                    if str(value).strip()
+                ]
+                context = " ".join([anchor.get_text(" ", strip=True), *previous_text])
             published_at = extract_date(context, default_year=default_year)
             if published_at and not start_date <= published_at <= end_date:
                 continue
 
-            title = anchor.get_text(" ", strip=True) or None
+            heading = card.find(re.compile(r"^h[1-6]$")) if card is not None else None
+            title = (heading or anchor).get_text(" ", strip=True) or None
             entries.append(DiscoveredEntry(url=url, title=title, published_at=published_at))
             seen.add(url)
             if len(entries) >= self.max_candidates:
                 break
 
         return entries
+
+
+def is_navigation_anchor(anchor) -> bool:
+    """Reject taxonomy and navigation links that happen to match an article URL pattern."""
+    class_tokens: list[str] = []
+    for element in (anchor, anchor.parent):
+        if element is not None:
+            class_tokens.extend(str(value).lower() for value in element.get("class", []))
+    return any(
+        marker in token
+        for token in class_tokens
+        for marker in ("category", "pagination", "post-card__terms", "tag", "term")
+    )
+
+
+def nearest_dated_container(anchor, default_year: int | None = None):
+    """Find the smallest surrounding article/card that contains its publication date."""
+    container = anchor
+    for _ in range(6):
+        container = container.parent
+        if container is None or container.name in {"body", "html"}:
+            break
+        text = container.get_text(" ", strip=True)
+        if len(text) <= 5_000 and extract_date(text, default_year=default_year):
+            return container
+    return None
 
 
 def canonicalize_url(value: str, base_url: str) -> str | None:

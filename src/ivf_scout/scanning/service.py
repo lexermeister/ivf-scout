@@ -153,13 +153,16 @@ class ScanService:
                             [
                                 classified_entry.title,
                                 classified_entry.category,
+                                classified_entry.product_name,
                                 classified_entry.summary,
                                 classified_entry.why_relevant,
                             ]
                         ):
                             entry_failures += 1
                             self.entries.mark_processed(
-                                entry, "FAILED", error="Relevant classification is incomplete"
+                                entry,
+                                "FAILED",
+                                error="New-product classification is incomplete",
                             )
                             continue
                         item = RelevantNewsItem(

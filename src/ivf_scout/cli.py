@@ -74,6 +74,8 @@ def list_news(
         for item in items:
             published = item.published_at.isoformat() if item.published_at else "date unknown"
             typer.echo(f"[{item.category}] {published} — {item.title}")
+            typer.echo(f"  Product: {item.product_name or 'not identified'}")
+            typer.echo(f"  Description: {item.summary}")
             typer.echo(f"  {item.url}")
 
 
