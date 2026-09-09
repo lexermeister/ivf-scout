@@ -38,6 +38,34 @@ only relevant news.
    .venv/bin/ivf-scout list-news
    ```
 
+## Source API
+
+Start the local API:
+
+```bash
+.venv/bin/uvicorn ivf_scout.api:app --reload
+```
+
+Create a source with `POST /sources`:
+
+```bash
+curl -X POST http://127.0.0.1:8000/sources \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Example Fertility",
+    "slug": "example-fertility",
+    "domain": "example.com",
+    "website_url": "https://www.example.com/",
+    "news_url": "https://www.example.com/news/",
+    "article_url_patterns": ["/news/"],
+    "enabled": true
+  }'
+```
+
+The API assigns the generic IVF/ART product focus and `MANUFACTURER` source type automatically.
+Creating a source does not scan it or call OpenAI. Interactive API documentation is available at
+`http://127.0.0.1:8000/docs` while the server is running.
+
 Scan one source with a 14-day lookback, including if that source was already scanned:
 
 ```bash

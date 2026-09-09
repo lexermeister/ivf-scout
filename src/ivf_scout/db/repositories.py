@@ -22,6 +22,15 @@ class SourceRepository:
         statement = select(Source).where(Source.slug == slug, Source.enabled.is_(True))
         return self.session.scalar(statement)
 
+    def get_by_slug(self, slug: str) -> Source | None:
+        return self.session.scalar(select(Source).where(Source.slug == slug))
+
+    def create(self, values: dict[str, object]) -> Source:
+        source = Source(**values)
+        self.session.add(source)
+        self.session.flush()
+        return source
+
     def upsert_seed(self, seed: dict[str, object]) -> Source:
         source = self.session.scalar(select(Source).where(Source.slug == seed["slug"]))
         if source is None:
